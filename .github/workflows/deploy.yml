@@ -24,7 +24,7 @@ jobs:
       uses: docker/login-action@v3
       with:
         registry: ${{ secrets.OCIR_REGISTRY_URL }}
-        username: ${{ secrets.OCIR_USERNAME }}
+        username: ${{ secrets.TENANT_NAME }}/${{ secrets.OCIR_USERNAME }}
         password: ${{ secrets.OCIR_TOKEN }}
 
     - name: Build and push (ARM64)
