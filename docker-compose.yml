@@ -3,14 +3,20 @@ version: '3.8'
 services:
   secretary-agent:
     
-    # --- ส่วนที่เปลี่ยน ---
-    # ให้มันอ่านค่า 'IMAGE_TAG' มาจากไฟล์ .env
     image: ${IMAGE_TAG}
-    # --------------------
 
     container_name: secretary_agent_app
     ports:
       - "8080:5000" 
+    
+    # --- ส่วนที่แก้ไข ---
     environment:
-      # - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # (ลบเครื่องหมาย "#" และ "-" ออก, ใช้ "Key: Value")
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      
+      # (ถ้า App คุณต้องใช้ Key อื่นๆ (จาก .env) ก็เพิ่มที่นี่)
+      # OPENAI_API_KEY: ${OPENAI_API_KEY}
+      # GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+    # --------------------
+
     restart: unless-stopped
