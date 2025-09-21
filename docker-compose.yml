@@ -7,9 +7,9 @@ services:
 
     container_name: secretary_agent_app
     ports:
-      - "8080:5000" 
+      - 8080:5000 
     
     environment:
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_API_KEY= ${GEMINI_API_KEY}
 
     restart: unless-stopped
