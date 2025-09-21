@@ -1,0 +1,27 @@
+# ใช้ Base Image ที่อัปเดตและปลอดภัยกว่า (Debian bookworm, Python 3.12)
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+
+# อัปเดตแพ็กเกจความปลอดภัยของระบบ
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
+
+# ตั้งค่า Working Directory
+WORKDIR /app
+
+# Copy ไฟล์ที่จำเป็นสำหรับการติดตั้ง dependencies
+COPY pyproject.toml uv.lock* ./
+
+# สั่ง uv ให้ติดตั้ง package จาก lock file (reproducible installs)
+RUN uv pip sync --no-cache
+
+# Copy โค้ดที่เหลือทั้งหมด (เช่น main.py)
+COPY . .
+
+# รันด้วย user ที่ไม่ใช่ root เพื่อลดความเสี่ยง
+RUN addgroup --system app && adduser --system --ingroup app app && chown -R app:app /app
+USER app
+
+# (ถ้า app ของคุณรันบน port 5000 - ถ้าไม่ ให้แก้)
+EXPOSE 5000
+
+# คำสั่งสำหรับรัน app (แก้ 'main.py' ถ้าไฟล์หลักของคุณชื่ออื่น)
+CMD ["python", "main.py"]
