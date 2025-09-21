@@ -10,8 +10,10 @@ WORKDIR /app
 # Copy ไฟล์ที่จำเป็นสำหรับการติดตั้ง dependencies
 COPY pyproject.toml uv.lock* ./
 
-# สั่ง uv ให้ติดตั้ง package จาก lock file (reproducible installs)
-RUN uv pip sync --no-cache
+# สั่ง uv ให้ติดตั้ง dependencies ตาม lock file แบบ reproducible (ติดตั้งเข้า system site-packages)
+RUN uv export --frozen --no-emit-project --format requirements-txt > requirements.txt \
+    && uv pip install --system --no-cache -r requirements.txt \
+    && rm requirements.txt
 
 # Copy โค้ดที่เหลือทั้งหมด (เช่น main.py)
 COPY . .
