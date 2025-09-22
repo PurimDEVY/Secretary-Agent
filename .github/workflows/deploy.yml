@@ -55,6 +55,8 @@ jobs:
           # SSH เข้าไปที่ App VM (arm-server-01)
           # ต้องมั่นใจว่า Path นี้ถูกต้อง (ตรงกับที่ clone ไว้ใน Step 3)
           cd ~/Secretary-Agent 
+
+          git pull
           
           # 1. ดึง Image ใหม่ล่าสุดที่ Build เสร็จจาก OCIR
           docker compose pull
