@@ -57,7 +57,7 @@ jobs:
           cd ~/Secretary-Agent 
 
           git pull
-          
+          echo "${{ secrets.OCIR_TOKEN }}" | docker login ${{ secrets.OCIR_REGISTRY_URL }} -u "${{ secrets.OCIR_TENANCY_NAMESPACE }}/Default/${{ secrets.OCIR_USERNAME }}" --password-stdin
           # 1. ดึง Image ใหม่ล่าสุดที่ Build เสร็จจาก OCIR
           docker compose pull
           
