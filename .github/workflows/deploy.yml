@@ -27,13 +27,13 @@ jobs:
         username: ${{ secrets.OCIR_TENANCY_NAMESPACE }}/Default/${{ secrets.OCIR_USERNAME }}
         password: ${{ secrets.OCIR_TOKEN }}
 
-    - name: Build and push (ARM64)
+    - name: Build and push (multi-arch)
       uses: docker/build-push-action@v5
       with:
         context: .
         file: ./Dockerfile
-        # Build Image สำหรับ ARM64 เท่านั้น (เพราะ VM ปลายทางเป็น ARM)
-        platforms: linux/arm64/v8
+        # Build Image แบบ multi-arch เพื่อรองรับทั้งเครื่อง local (amd64) และ VM (arm64)
+        platforms: linux/amd64,linux/arm64/v8
         push: true
         # Tag Image ด้วย :latest 
         tags: ${{ secrets.OCIR_REGISTRY_URL }}/${{ secrets.OCIR_TENANCY_NAMESPACE }}/secretary-agent:latest
