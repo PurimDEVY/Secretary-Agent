@@ -1,11 +1,9 @@
-version: '3.8'
-
 services:
   secretary-agent:
-    
     image: ${IMAGE_TAG}
-
     container_name: secretary_agent_app
+    environment:
+      - PYTHONUNBUFFERED=1
     ports:
       - 8080:5000 
     
