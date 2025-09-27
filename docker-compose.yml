@@ -2,12 +2,14 @@ services:
   secretary-agent:
     image: ${IMAGE_TAG}
     container_name: secretary_agent_app
+    env_file:
+      - .env
     environment:
       - PYTHONUNBUFFERED=1
       - DB_WALLET_DIR=/app/wallet
       - GCP_SERVICE_ACCOUNT_JSON_FILE=/run/secrets/gcp_sa.json
     ports:
-      - "8080:5000" 
+      - "8080:5000"
     volumes:
       - ./secrets/gcp_sa.json:/run/secrets/gcp_sa.json:ro
       - ./secrets/wallet:/app/wallet:ro
