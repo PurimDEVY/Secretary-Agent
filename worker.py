@@ -8,6 +8,48 @@ load_dotenv()
 print("✅ Environment variables loaded.")
 
 
+
+def test_db_connection() -> bool:
+    print("\n--- Testing OCI Database Connection ---")
+    try:
+        db_dns = os.getenv('DB_DNS')
+        db_user = os.getenv('DB_APP_USER')
+        db_password = os.getenv('DB_APP_USER_PASSWORD')
+        wallet_password = os.getenv('DB_WALLET_PASSWORD')
+
+        default_wallet_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wallet')
+        print(f"Default wallet directory: {default_wallet_dir}")
+        wallet_location = os.getenv('DB_WALLET_DIR', default_wallet_dir)
+        print(f"Wallet directory resolved to: {wallet_location}")
+        if not os.path.isdir(wallet_location):
+            raise ValueError(f"Wallet directory not found at: {wallet_location}")
+
+        # Use TNS alias from tnsnames.ora, default to TP
+        tns_alias = os.getenv('DB_TNS_ALIAS')
+        print(f"Using TNS alias: {tns_alias}")
+
+        missing = [k for k in ['DB_APP_USER', 'DB_APP_USER_PASSWORD', 'DB_WALLET_PASSWORD'] if not os.getenv(k)]
+        if missing:
+            raise ValueError(f"Missing required DB env vars: {', '.join(missing)}")
+
+        print("Attempting to connect to the Oracle Database...")
+        with oracledb.connect(
+            config_dir=wallet_location,
+            user=db_user,
+            password=db_password,
+            dsn=db_dns,
+            wallet_password=wallet_password
+        ) as connection:
+            print("\n" + "="*60)
+            print("✅✅✅ SUCCESSFULLY CONNECTED TO ORACLE AUTONOMOUS DATABASE! ✅✅✅")
+            print(f"     - DB Version: {connection.version}")
+            print("="*60 + "\n")
+            return True
+    except Exception as e:
+        print(f"❌ Failed to connect to Oracle Database: {e}")
+        return False
+
+
 def test_gcp() -> bool:
     print("\n--- Testing GCP Configuration ---")
     try:
@@ -23,57 +65,6 @@ def test_gcp() -> bool:
         return True
     except Exception as e:
         print(f"❌ Error in GCP Configuration: {e}")
-        return False
-
-
-def test_db_connection() -> bool:
-    print("\n--- Testing OCI Database Connection ---")
-    try:
-        db_user = os.getenv('DB_APP_USER')
-        db_password = os.getenv('DB_APP_USER_PASSWORD')
-        wallet_password = os.getenv('DB_WALLET_PASSWORD')
-        db_connection_string = os.getenv('DB_CONNECTION_STRING')
-
-
-        default_wallet_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wallet')
-        wallet_location = os.getenv('DB_WALLET_DIR', default_wallet_dir)
-        print(f"Wallet directory resolved to: {wallet_location}")
-        if not os.path.isdir(wallet_location):
-            raise ValueError(f"Wallet directory not found at: {wallet_location}")
-
-        required = ['DB_APP_USER', 'DB_APP_USER_PASSWORD', 'DB_WALLET_PASSWORD']
-        if db_connection_string:
-            print("Using DB_CONNECTION_STRING from environment.")
-        else:
-            print("DB_CONNECTION_STRING not provided; expecting DB_HOST/DB_PORT/DB_SERVICE_NAME.")
-            required.extend(['DB_HOST', 'DB_PORT', 'DB_SERVICE_NAME'])
-        missing = [k for k in required if not os.getenv(k)]
-        if missing:
-            raise ValueError(f"Missing required DB env vars: {', '.join(missing)}")
-
-        print("Attempting to connect to the Oracle Database...")
-        if not db_connection_string:
-            db_host = os.getenv('DB_HOST')
-            db_port = os.getenv('DB_PORT')
-            db_service_name = os.getenv('DB_SERVICE_NAME')
-            dsn = f"{db_host}:{db_port}/{db_service_name}"
-        else:
-            dsn = db_connection_string
-
-        with oracledb.connect(
-            user=db_user,
-            password=db_password,
-            dsn=dsn,
-            config_dir=wallet_location,
-            wallet_password=wallet_password
-        ) as connection:
-            print("\n" + "="*60)
-            print("✅✅✅ SUCCESSFULLY CONNECTED TO ORACLE AUTONOMOUS DATABASE! ✅✅✅")
-            print(f"     - DB Version: {connection.version}")
-            print("="*60 + "\n")
-            return True
-    except Exception as e:
-        print(f"❌ Failed to connect to Oracle Database: {e}")
         return False
 
 
