@@ -4,8 +4,16 @@ services:
     container_name: secretary_agent_app
     environment:
       - PYTHONUNBUFFERED=1
+      - DB_WALLET_DIR=/app/wallet
+      - GCP_SERVICE_ACCOUNT_JSON_FILE=/run/secrets/gcp_sa.json
     ports:
       - 8080:5000 
-    
-
+    volumes:
+      - ./wallet:/app/wallet:ro
+    secrets:
+      - gcp_sa.json
     restart: unless-stopped
+
+secrets:
+  gcp_sa.json:
+    file: ./gcp_sa.json

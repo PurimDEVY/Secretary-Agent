@@ -13,7 +13,12 @@ def test_gcp() -> bool:
     try:
         gcp_service_account_str = os.getenv('GCP_SERVICE_ACCOUNT_JSON')
         if not gcp_service_account_str:
-            raise ValueError("GCP_SERVICE_ACCOUNT_JSON not found in .env file.")
+            gcp_sa_path = os.getenv('GCP_SERVICE_ACCOUNT_JSON_FILE')
+            if gcp_sa_path and os.path.isfile(gcp_sa_path):
+                with open(gcp_sa_path, 'r', encoding='utf-8') as f:
+                    gcp_service_account_str = f.read()
+            else:
+                raise ValueError("GCP_SERVICE_ACCOUNT_JSON not found and GCP_SERVICE_ACCOUNT_JSON_FILE not set/accessible.")
         gcp_credentials_info = json.loads(gcp_service_account_str)
         project_id = gcp_credentials_info.get('project_id')
         print(f"✅ GCP Service Account JSON is valid for project: {project_id}")
