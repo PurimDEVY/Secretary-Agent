@@ -24,10 +24,6 @@ def test_db_connection() -> bool:
         if not os.path.isdir(wallet_location):
             raise ValueError(f"Wallet directory not found at: {wallet_location}")
 
-        # Use TNS alias from tnsnames.ora, default to TP
-        tns_alias = os.getenv('DB_TNS_ALIAS')
-        print(f"Using TNS alias: {tns_alias}")
-
         missing = [k for k in ['DB_APP_USER', 'DB_APP_USER_PASSWORD', 'DB_WALLET_PASSWORD'] if not os.getenv(k)]
         if missing:
             raise ValueError(f"Missing required DB env vars: {', '.join(missing)}")
