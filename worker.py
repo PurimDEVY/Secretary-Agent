@@ -77,7 +77,8 @@ def test_db_connection() -> bool:
             port=db_port,
             service_name=db_service_name,
             config_dir=wallet_location,
-            wallet_password=wallet_password
+            wallet_password=wallet_password,
+            disable_oob=True
         ) as connection:
         # --- End of Modification ---
             print("\n" + "="*60)
