@@ -2,12 +2,20 @@ from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-from worker import test_db_connection
+from worker import test_gcp, test_db_connection, test_gemini_api
 
 async def index(request):
     return JSONResponse({"message": "Hello from secretary-agent!"})
 
 app = Starlette(routes=[Route("/", index)])
+
+
+@app.on_event("startup")
+async def startup():
+    # Run diagnostics at app startup (works regardless of how uvicorn is launched)
+    test_gcp()
+    test_db_connection()
+    test_gemini_api()
 
 if __name__ == "__main__":
     test_db_connection()
