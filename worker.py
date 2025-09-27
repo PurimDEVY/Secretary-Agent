@@ -13,12 +13,19 @@ def test_gcp() -> bool:
     try:
         gcp_service_account_str = os.getenv('GCP_SERVICE_ACCOUNT_JSON')
         if not gcp_service_account_str:
-            gcp_sa_path = os.getenv('GCP_SERVICE_ACCOUNT_JSON_FILE')
-            if gcp_sa_path and os.path.isfile(gcp_sa_path):
-                with open(gcp_sa_path, 'r', encoding='utf-8') as f:
+            gcp_sa_file = os.getenv('GCP_SERVICE_ACCOUNT_JSON_FILE')
+            if gcp_sa_file and os.path.isfile(gcp_sa_file):
+                with open(gcp_sa_file, 'r', encoding='utf-8') as f:
                     gcp_service_account_str = f.read()
-            else:
-                raise ValueError("GCP_SERVICE_ACCOUNT_JSON not found and GCP_SERVICE_ACCOUNT_JSON_FILE not set/accessible.")
+            elif not gcp_service_account_str:
+                # Local/dev fallback: secrets/gcp_sa.json next to this file (outside container)
+                project_dir = os.path.dirname(os.path.abspath(__file__))
+                fallback_path = os.path.join(project_dir, 'secrets', 'gcp_sa.json')
+                if os.path.isfile(fallback_path):
+                    with open(fallback_path, 'r', encoding='utf-8') as f:
+                        gcp_service_account_str = f.read()
+        if not gcp_service_account_str:
+            raise ValueError("GCP_SERVICE_ACCOUNT_JSON not found; set GCP_SERVICE_ACCOUNT_JSON or GCP_SERVICE_ACCOUNT_JSON_FILE.")
         gcp_credentials_info = json.loads(gcp_service_account_str)
         project_id = gcp_credentials_info.get('project_id')
         print(f"✅ GCP Service Account JSON is valid for project: {project_id}")
@@ -44,8 +51,15 @@ def test_db_connection() -> bool:
             except Exception as e:
                 print(f"⚠️ Failed to init thick client at {oracle_client_lib_dir}: {e}. Falling back to thin mode.")
 
-        default_wallet_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wallet')
-        wallet_location = os.getenv('DB_WALLET_DIR', default_wallet_dir)
+        # Resolve wallet directory
+        wallet_location_env = os.getenv('DB_WALLET_DIR')
+        if wallet_location_env:
+            wallet_location = wallet_location_env
+        else:
+            project_dir = os.path.dirname(os.path.abspath(__file__))
+            secrets_wallet = os.path.join(project_dir, 'secrets', 'wallet')
+            plain_wallet = os.path.join(project_dir, 'wallet')
+            wallet_location = secrets_wallet if os.path.isdir(secrets_wallet) else plain_wallet
         print(f"Wallet directory resolved to: {wallet_location}")
         if not os.path.isdir(wallet_location):
             raise ValueError(f"Wallet directory not found at: {wallet_location}")

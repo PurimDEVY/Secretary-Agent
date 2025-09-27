@@ -209,3 +209,5 @@ __marimo__/
 # OCI Wallet - Do not commit credentials
 wallet/
 .env*
+gcp_sa.json
+secrets/
