@@ -1,7 +1,17 @@
 import os
 import json
+import logging
 from dotenv import load_dotenv
 import oracledb
+
+
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger("secretary-agent")
 
 print("Loading environment variables from .env file...")
 load_dotenv()
@@ -47,6 +57,8 @@ print("✅ Environment variables loaded.")
 def test_db_connection() -> bool:
     print("\n--- Testing OCI Database Connection ---")
     try:
+        # --- ACTIVATE THICK MODE ---
+        oracledb.init_oracle_client()
         # --- NEW: Get direct connection parameters ---
         db_host = os.getenv('DB_HOST')
         db_port = int(os.getenv('DB_PORT', 1522))
@@ -86,8 +98,8 @@ def test_db_connection() -> bool:
             print(f"     - DB Version: {connection.version}")
             print("="*60 + "\n")
             return True
-    except Exception as e:
-        print(f"❌ Failed to connect to Oracle Database: {e}")
+    except Exception:
+        logging.exception("❌ Failed to connect to Oracle Database")
         return False
 
 def test_gcp() -> bool:
@@ -103,8 +115,8 @@ def test_gcp() -> bool:
         project_id = gcp_credentials_info.get('project_id')
         print(f"✅ GCP Service Account JSON is valid for project: {project_id}")
         return True
-    except Exception as e:
-        print(f"❌ Error in GCP Configuration: {e}")
+    except Exception:
+        logging.exception("❌ Error in GCP Configuration")
         return False
 
 
