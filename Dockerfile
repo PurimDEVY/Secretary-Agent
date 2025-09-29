@@ -30,8 +30,7 @@ COPY . .
 # รันด้วย user ที่ไม่ใช่ root เพื่อลดความเสี่ยง
 RUN addgroup --system app && \
     adduser --system --ingroup app app && \
-    chown -R app:app /app && \
-    chmod -R 750 /app/wallet
+    chown -R app:app /app && 
 USER app
 
 # (ถ้า app ของคุณรันบน port 5000 - ถ้าไม่ ให้แก้)
