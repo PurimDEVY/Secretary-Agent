@@ -17,7 +17,7 @@ RUN unzip instantclient-basic-linux.arm64-23.9.0.25.07.zip && \
 ENV LD_LIBRARY_PATH=/app/instantclient_23_9
 
 # Copy ไฟล์ที่จำเป็นสำหรับการติดตั้ง dependencies
-COPY --chown=app:app pyproject.toml uv.lock* ./
+COPY pyproject.toml uv.lock* ./
 
 # สั่ง uv ให้ติดตั้ง dependencies ตาม lock file แบบ reproducible (ติดตั้งเข้า system site-packages)
 RUN uv export --frozen --no-emit-project --format requirements-txt > requirements.txt \
@@ -25,10 +25,13 @@ RUN uv export --frozen --no-emit-project --format requirements-txt > requirement
     && rm requirements.txt
 
 # Copy โค้ดที่เหลือทั้งหมด (เช่น main.py)
-COPY --chown=app:app . .
+COPY . .
 
 # รันด้วย user ที่ไม่ใช่ root เพื่อลดความเสี่ยง
-RUN addgroup --system app && adduser --system --ingroup app app && chown -R app:app /app
+RUN addgroup --system app && \
+    adduser --system --ingroup app app && \
+    chown -R app:app /app && \
+    chmod -R 750 /app/wallet
 USER app
 
 # (ถ้า app ของคุณรันบน port 5000 - ถ้าไม่ ให้แก้)
