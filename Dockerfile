@@ -12,7 +12,7 @@ RUN wget https://download.oracle.com/otn_software/linux/instantclient/2390000/in
 RUN unzip instantclient-basic-linux.x64-23.9.0.25.07.zip && \
     rm instantclient-basic-linux.x64-23.9.0.25.07.zip
     
-ENV LD_LIBRARY_PATH=/app/instantclient_23_9    
+ENV LD_LIBRARY_PATH=/app/instantclient_23_9
 
 # Copy ไฟล์ที่จำเป็นสำหรับการติดตั้ง dependencies
 COPY pyproject.toml uv.lock* ./
