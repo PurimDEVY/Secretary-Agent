@@ -7,16 +7,14 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y wget unzip libaio
 # ตั้งค่า Working Directory
 WORKDIR /app
 
-RUN wget https://download.oracle.com/otn_software/linux/instantclient/2390000/instantclient-basic-linux.x64-23.9.0.25.07.zip
+RUN wget https://download.oracle.com/otn_software/linux/instantclient/2390000/instantclient-basic-linux.arm64-23.9.0.25.07.zip
 
-RUN unzip instantclient-basic-linux.x64-23.9.0.25.07.zip && \
-    rm instantclient-basic-linux.x64-23.9.0.25.07.zip
+RUN unzip instantclient-basic-linux.arm64-23.9.0.25.07.zip && \
+    rm instantclient-basic-linux.arm64-23.9.0.25.07.zip
 
 
-# สร้าง config file ให้ linker ของ Linux รู้จัก Oracle Client library
-RUN echo /app/instantclient_23_9 > /etc/ld.so.conf.d/oracle-instantclient.conf
-# สั่งให้ระบบทำการ update library cache
-RUN ldconfig
+
+ENV LD_LIBRARY_PATH=/app/instantclient_23_9
 
 # Copy ไฟล์ที่จำเป็นสำหรับการติดตั้ง dependencies
 COPY pyproject.toml uv.lock* ./
