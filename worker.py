@@ -57,14 +57,6 @@ print("✅ Environment variables loaded.")
 def test_db_connection() -> bool:
     print("\n--- Testing OCI Database Connection ---")
     try:
-        # --- ACTIVATE THICK MODE ---
-        oracledb.init_oracle_client()
-        # --- NEW: Get direct connection parameters ---
-        db_host = os.getenv('DB_HOST')
-        db_port = int(os.getenv('DB_PORT', 1522))
-        db_service_name = os.getenv('DB_SERVICE_NAME')
-        # --- End of New Section ---
-
         db_user = os.getenv('DB_APP_USER')
         db_password = os.getenv('DB_APP_USER_PASSWORD')
         wallet_password = os.getenv('DB_WALLET_PASSWORD')
@@ -76,23 +68,31 @@ def test_db_connection() -> bool:
         if not os.path.isdir(wallet_location):
             raise ValueError(f"Wallet directory not found at: {wallet_location}")
 
-        missing = [k for k in ['DB_HOST', 'DB_PORT', 'DB_SERVICE_NAME', 'DB_APP_USER', 'DB_APP_USER_PASSWORD', 'DB_WALLET_PASSWORD'] if not os.getenv(k)]
+        # Ensure required env vars are present
+        missing = [k for k in ['DB_APP_USER', 'DB_APP_USER_PASSWORD'] if not os.getenv(k)]
         if missing:
             raise ValueError(f"Missing required DB env vars: {', '.join(missing)}")
 
-        print("Attempting to connect to the Oracle Database using direct parameters...")
-        # --- MODIFIED: The oracledb.connect call ---
+        # Prefer a DSN (Easy Connect or full DESCRIPTION) or a TNS alias from tnsnames.ora
+        db_dns = os.getenv('DB_DNS')
+        db_tns_alias = os.getenv('DB_TNS_ALIAS')
+        if not db_dns and not db_tns_alias:
+            raise ValueError("Provide either DB_DNS or DB_TNS_ALIAS to use wallet-based Thick connection.")
+
+        # Make wallet config visible to Thick mode
+        os.environ['TNS_ADMIN'] = wallet_location
+        # Initialize Thick mode and point to the wallet config directory so sqlnet.ora and tnsnames.ora are used
+        oracledb.init_oracle_client(config_dir=wallet_location)
+
+        dsn = db_dns or db_tns_alias
+        print("Attempting to connect to the Oracle Database using wallet and DSN/TNS alias...")
         with oracledb.connect(
             user=db_user,
             password=db_password,
-            host=db_host,
-            port=db_port,
-            service_name=db_service_name,
+            dsn=dsn,
             config_dir=wallet_location,
             wallet_password=wallet_password,
-            disable_oob=True
         ) as connection:
-        # --- End of Modification ---
             print("\n" + "="*60)
             print("✅✅✅ SUCCESSFULLY CONNECTED TO ORACLE AUTONOMOUS DATABASE! ✅✅✅")
             print(f"     - DB Version: {connection.version}")
