@@ -59,7 +59,6 @@ def test_db_connection() -> bool:
     try:
         db_user = os.getenv('DB_APP_USER')
         db_password = os.getenv('DB_APP_USER_PASSWORD')
-        wallet_password = os.getenv('DB_WALLET_PASSWORD')
 
         default_wallet_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'wallet')
         print(f"Default wallet directory: {default_wallet_dir}")
@@ -91,7 +90,6 @@ def test_db_connection() -> bool:
             password=db_password,
             dsn=dsn,
             config_dir=wallet_location,
-            wallet_password=wallet_password,
         ) as connection:
             print("\n" + "="*60)
             print("✅✅✅ SUCCESSFULLY CONNECTED TO ORACLE AUTONOMOUS DATABASE! ✅✅✅")
