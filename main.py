@@ -1,9 +1,10 @@
 from starlette.applications import Starlette
 from starlette.responses import JSONResponse
 from starlette.routing import Route
+import logging
 
 from diagnostics.testdbconnection import test_gcp, test_db_connection, test_gemini_api
-from diagnostics.testpubsubemail import test_pubsub_connection
+from diagnostics.testpubsubemail import main as run_pubsub_tests
 
 async def index(request):
     return JSONResponse({"message": "Hello from secretary-agent cd test change!"})
@@ -17,7 +18,11 @@ async def startup():
     test_gcp()
     test_db_connection()
     test_gemini_api()
-    test_pubsub_connection()
+    try:
+        # Call the diagnostics module's test runner once; do not retry on failure
+        run_pubsub_tests()
+    except Exception:
+        logging.exception("Pub/Sub diagnostics failed")
 
 if __name__ == "__main__":
     import uvicorn

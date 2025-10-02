@@ -38,12 +38,16 @@ class PubSubListener:
 
     def stop(self) -> None:
         logging.info("Stopping Pub/Sub listener...")
-        try:
-            if self._future:
-                self._future.cancel()
-        finally:
-            # Close the underlying gRPC channel
-            self._subscriber.close()
+        if self._future:
+            self._future.cancel()
+            try:
+                # Wait briefly for background threads to quiesce after cancel
+                self._future.result(timeout=5)
+            except Exception:
+                # Expected on cancellation or timeout; proceed to close channel
+                pass
+        # Close the underlying gRPC channel after cancellation settles
+        self._subscriber.close()
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=5)
         logging.info("Pub/Sub listener stopped.")
@@ -67,6 +71,8 @@ class PubSubListener:
                 logging.debug(f"Parsed JSON: {parsed}")
             except Exception:
                 logging.debug("Message is not valid JSON; delivering raw text.")
+            # Log attributes at debug level to keep visibility and satisfy linters
+            logging.debug(f"Attributes: {attributes}")
             # TODO: route to your domain logic, e.g., handle Gmail events, etc.
             # handle_event(parsed if parsed_json else payload, attributes)
             message.ack()
@@ -77,50 +83,17 @@ class PubSubListener:
 
     @staticmethod
     def _load_credentials():
-        gj = os.getenv("GCP_SERVICE_ACCOUNT_JSON")
-        if gj:
+        key = "GOOGLE_APPLICATION_CREDENTIALS"
+        file_path = os.getenv(key)
+        if file_path and os.path.isfile(file_path):
             try:
-                info = json.loads(gj)
-                creds = service_account.Credentials.from_service_account_info(info)
-                logging.info("Using GCP service account from GCP_SERVICE_ACCOUNT_JSON (inline).")
+                creds = service_account.Credentials.from_service_account_file(file_path)
+                logging.info(f"Using GCP service account from {key}={file_path}.")
                 return creds
             except Exception as e:
-                logging.error(f"Invalid GCP_SERVICE_ACCOUNT_JSON: {e}")
+                logging.error(f"Invalid service account file at {file_path}: {e}")
 
-        # Next, try file-based credentials from environment variables
-        for env_var in ("GCP_SERVICE_ACCOUNT_FILE", "GOOGLE_APPLICATION_CREDENTIALS"):
-            file_path = os.getenv(env_var)
-            if file_path and os.path.isfile(file_path):
-                try:
-                    creds = service_account.Credentials.from_service_account_file(file_path)
-                    logging.info(f"Using GCP service account from {env_var}={file_path}.")
-                    return creds
-                except Exception as e:
-                    logging.error(f"Invalid service account file at {file_path}: {e}")
 
-        # Finally, fall back to a conventional local path: ./secrets/gcp_sa.json
-        candidate_paths = []
-        try:
-            # Working directory
-            candidate_paths.append(os.path.join(os.getcwd(), "secrets", "gcp_sa.json"))
-            # Relative to this file's directory
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            candidate_paths.append(os.path.join(base_dir, "secrets", "gcp_sa.json"))
-        except Exception:
-            # If path resolution fails for any reason, we'll just skip to default creds
-            pass
-
-        for path in candidate_paths:
-            if path and os.path.isfile(path):
-                try:
-                    creds = service_account.Credentials.from_service_account_file(path)
-                    logging.info(f"Using GCP service account from {path}.")
-                    return creds
-                except Exception as e:
-                    logging.error(f"Failed to load service account from {path}: {e}")
-
-        logging.info("No explicit GCP credentials provided; relying on default application credentials.")
-        return None
 
     def _resolve_subscription_path(
         self,
