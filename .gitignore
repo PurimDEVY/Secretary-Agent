@@ -211,3 +211,4 @@ wallet/
 .env*
 gcp_sa.json
 secrets/
+backup/

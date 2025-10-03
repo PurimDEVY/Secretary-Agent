@@ -7,7 +7,7 @@ from diagnostics.testdbconnection import test_gcp, test_db_connection, test_gemi
 from diagnostics.testpubsubemail import main as run_pubsub_tests
 
 async def index(request):
-    return JSONResponse({"message": "Hello from secretary-agent cd test change!"})
+    return JSONResponse({"message": "Hello from secretary-agent"})
 
 app = Starlette(routes=[Route("/", index)])
 
