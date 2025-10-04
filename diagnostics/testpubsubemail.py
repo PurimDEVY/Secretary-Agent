@@ -7,12 +7,12 @@ from google.api_core.exceptions import NotFound, PermissionDenied, Unauthenticat
 from google.cloud import pubsub_v1
 from google.oauth2 import service_account
 if __package__:
-    from pubsub_listener import PubSubListener
+    from infrastructure.pubsub_listener import PubSubListener
 else:
     # Running directly: `python diagnostics/testpubsubemail.py`
     import sys
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from pubsub_listener import PubSubListener
+    from infrastructure.pubsub_listener import PubSubListener
 
 
 # Load environment variables from .env if present
@@ -133,7 +133,7 @@ def test_listener_resolve_subscription_path() -> bool:
     Uses a fake SubscriberClient to avoid real GCP calls.
     """
     try:
-        import pubsub_listener as _pl
+        import infrastructure.pubsub_listener as _pl
 
         # Backup and monkeypatch SubscriberClient
         OriginalClient = _pl.pubsub_v1.SubscriberClient
@@ -180,7 +180,7 @@ def test_listener_resolve_subscription_path() -> bool:
 def test_listener_on_message_ack() -> bool:
     """Unit test: ensure _on_message decodes payload, parses JSON when possible, and acks."""
     try:
-        import pubsub_listener as _pl
+        import infrastructure.pubsub_listener as _pl
 
         # Monkeypatch SubscriberClient to avoid real network usage during instance creation
         OriginalClient = _pl.pubsub_v1.SubscriberClient
@@ -237,7 +237,7 @@ def test_listener_start_stop_with_fakes() -> bool:
     """
     try:
         import threading
-        import pubsub_listener as _pl
+        import infrastructure.pubsub_listener as _pl
 
         OriginalClient = _pl.pubsub_v1.SubscriberClient
 
@@ -293,7 +293,7 @@ def test_listener_start_stop_with_fakes() -> bool:
 def test_listener_load_credentials() -> bool:
     """Unit test: _load_credentials uses env var and handles failures gracefully."""
     try:
-        import pubsub_listener as _pl
+        import infrastructure.pubsub_listener as _pl
 
         # Backup
         original_env = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")

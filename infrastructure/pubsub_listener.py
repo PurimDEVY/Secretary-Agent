@@ -2,10 +2,18 @@ import json
 import logging
 import os
 import threading
-from typing import Optional
+from typing import Any, Callable, Optional
 
 from google.cloud import pubsub_v1
 from google.oauth2 import service_account
+try:
+    from google.api_core import exceptions as gax_exceptions
+except Exception:  # pragma: no cover - optional at runtime
+    gax_exceptions = None  # type: ignore[assignment]
+try:
+    from googleapiclient.errors import HttpError  # type: ignore[import-not-found]
+except Exception:  # pragma: no cover - optional at runtime
+    HttpError = None  # type: ignore[assignment]
 
 
 class PubSubListener:
@@ -14,6 +22,7 @@ class PubSubListener:
         subscription: Optional[str] = None,
         project_id: Optional[str] = None,
         subscription_id: Optional[str] = None,
+        message_handler: Optional[Callable[[Any, dict[str, Any]], None]] = None,
     ) -> None:
         # Allow configuration purely via environment variables when not passed explicitly
         if subscription is None and project_id is None and subscription_id is None:
@@ -29,10 +38,24 @@ class PubSubListener:
 
         self._future: Optional[pubsub_v1.subscriber.futures.StreamingPullFuture] = None
         self._thread: Optional[threading.Thread] = None
+        self._handler = message_handler
 
     def start(self) -> None:
         logging.info(f"Starting Pub/Sub listener: {self._subscription_path}")
-        self._future = self._subscriber.subscribe(self._subscription_path, callback=self._on_message)
+        # Flow control via environment
+        max_messages = int(os.getenv("PUBSUB_MAX_MESSAGES", "10"))
+        max_bytes = int(os.getenv("PUBSUB_MAX_BYTES", str(10 * 1024 * 1024)))
+        max_lease = int(os.getenv("PUBSUB_MAX_LEASE_DURATION", "600"))
+        flow_control = pubsub_v1.types.FlowControl(
+            max_messages=max_messages,
+            max_bytes=max_bytes,
+            max_lease_duration=max_lease,
+        )
+        self._future = self._subscriber.subscribe(
+            self._subscription_path,
+            callback=self._on_message,
+            flow_control=flow_control,
+        )
         self._thread = threading.Thread(target=self._wait_forever, name="pubsub-listener", daemon=True)
         self._thread.start()
 
@@ -70,16 +93,57 @@ class PubSubListener:
                 parsed = json.loads(payload)
                 logging.debug(f"Parsed JSON: {parsed}")
             except Exception:
+                parsed = payload
                 logging.debug("Message is not valid JSON; delivering raw text.")
             # Log attributes at debug level to keep visibility and satisfy linters
             logging.debug(f"Attributes: {attributes}")
-            # TODO: route to your domain logic, e.g., handle Gmail events, etc.
-            # handle_event(parsed if parsed_json else payload, attributes)
+            # Route to handler if provided
+            if self._handler:
+                try:
+                    self._handler(parsed, attributes)
+                except Exception as handler_exc:  # noqa: BLE001
+                    if self._is_transient_error(handler_exc):
+                        logging.warning("Transient error in message handler; NACK for retry: %s", handler_exc)
+                        message.nack()
+                        return
+                    logging.exception("Non-retryable error in message handler; ACK to drop")
+                    message.ack()
+                    return
+            # Default behavior or successful handling
             message.ack()
         except Exception as e:
             logging.exception(f"Error handling message: {e}")
-            # Consider NACK for retry if desired:
-            # message.nack()
+            # If unexpected error here, prefer NACK to allow retry once
+            try:
+                message.nack()
+            except Exception:
+                logging.debug("Failed to NACK after exception; possibly already settled")
+
+    def _is_transient_error(self, exc: Exception) -> bool:
+        """Best-effort classification of transient errors suitable for retry via NACK."""
+        # Network and timeout-like errors
+        if isinstance(exc, (TimeoutError, ConnectionError)):
+            return True
+        # google.api_core exceptions with retryable nature
+        if gax_exceptions is not None and isinstance(
+            exc,
+            (
+                getattr(gax_exceptions, "ServiceUnavailable", tuple()),
+                getattr(gax_exceptions, "DeadlineExceeded", tuple()),
+                getattr(gax_exceptions, "InternalServerError", tuple()),
+                getattr(gax_exceptions, "TooManyRequests", tuple()),
+            ),
+        ):
+            return True
+        # googleapiclient HttpError: retry on 5xx and 429
+        if HttpError is not None and isinstance(exc, HttpError):  # type: ignore[misc]
+            try:
+                status = int(getattr(exc, "status_code", None) or getattr(exc, "resp", {}).status)
+            except Exception:
+                status = None
+            if status and (status >= 500 or status == 429):
+                return True
+        return False
 
     @staticmethod
     def _load_credentials():

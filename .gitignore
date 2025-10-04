@@ -212,3 +212,4 @@ wallet/
 gcp_sa.json
 secrets/
 backup/
+.cursorrules
