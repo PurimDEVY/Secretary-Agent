@@ -27,6 +27,12 @@ class EmailService:
         The payload should contain a Gmail message id in one of these fields:
           - "message_id" | "gmailMessageId" | payload["message"]["id"]
         """
+        logging.info(f"EmailService.handle_event: payload={payload} attributes={attributes}")
+        try:
+            attr_keys = sorted(list((attributes or {}).keys()))
+            self._logger.info("EmailService.handle_event: payload_keys=%s attr_keys=%s", sorted(list(payload.keys())), attr_keys)
+        except Exception:
+            pass
         message_id = (
             payload.get("message_id")
             or payload.get("gmailMessageId")
@@ -49,8 +55,29 @@ class EmailService:
 
         email = self._extract_email_details(raw_msg)
 
+        # Log concise email overview and a short body preview for observability
+        try:
+            preview_source = email.get("body_text") or email.get("snippet") or ""
+            if isinstance(preview_source, str):
+                preview = preview_source.replace("\r", " ").replace("\n", " ").strip()
+                if len(preview) > 300:
+                    preview = preview[:300] + "..."
+            else:
+                preview = ""
+            self._logger.info(
+                "Email received: id=%s from=%s to=%s subject=%s body_preview=%s",
+                email.get("id"),
+                email.get("from"),
+                email.get("to"),
+                email.get("subject"),
+                preview,
+            )
+        except Exception:  # noqa: BLE001
+            self._logger.exception("EmailService: failed to log email preview for %s", email.get("id"))
+
         # Attempt to load attachment bytes if client provides method
         if email.get("attachments"):
+            self._logger.info("EmailService: %d attachment(s) referenced", len(email["attachments"]))
             for attachment in email["attachments"]:
                 if (
                     attachment.get("data") is None
@@ -63,6 +90,7 @@ class EmailService:
                             attachment["data"] = base64.b64encode(blob).decode("ascii")
                         elif isinstance(blob, str):
                             attachment["data"] = blob
+                        self._logger.info("EmailService: fetched attachment '%s' (%s)", attachment.get("filename"), attachment.get("mimeType"))
                     except Exception:  # noqa: BLE001
                         self._logger.exception(
                             "EmailService: failed to fetch attachment '%s'", attachment.get("filename")
@@ -72,6 +100,7 @@ class EmailService:
         try:
             if self.db and hasattr(self.db, "save_email"):
                 self.db.save_email(email)  # type: ignore[attr-defined]
+                self._logger.info("EmailService: email %s persisted via DbService.save_email", email.get("id"))
         except Exception:  # noqa: BLE001
             self._logger.exception("EmailService: failed to persist email %s", email.get("id"))
 

@@ -32,9 +32,15 @@ class PubSubListener:
 
         self._creds = self._load_credentials()
         self._subscriber = pubsub_v1.SubscriberClient(credentials=self._creds) if self._creds else pubsub_v1.SubscriberClient()
+        if self._creds is None:
+            logging.info("PubSubListener: using Application Default Credentials (no GOOGLE_APPLICATION_CREDENTIALS file)")
+        else:
+            logging.info("PubSubListener: initialized with explicit service account credentials")
         self._subscription_path = self._resolve_subscription_path(subscription, project_id, subscription_id)
         if not self._subscription_path:
             raise ValueError("Pub/Sub subscription not provided. Set PUBSUB_SUBSCRIPTION or GCP_PROJECT_ID + PUBSUB_SUBSCRIPTION_ID")
+        else:
+            logging.info("PubSubListener subscription path resolved: %s", self._subscription_path)
 
         self._future: Optional[pubsub_v1.subscriber.futures.StreamingPullFuture] = None
         self._thread: Optional[threading.Thread] = None
@@ -85,18 +91,21 @@ class PubSubListener:
 
     def _on_message(self, message: pubsub_v1.subscriber.message.Message) -> None:
         try:
+            logging.info(f"Received message: {message}")
             payload = message.data.decode("utf-8") if message.data else ""
             attributes = dict(message.attributes or {})
             logging.info(f"Received message: ack_id={message.ack_id}, size={len(payload)}")
+            logging.info(f"payload: {payload}")
             # Try parse JSON if applicable
             try:
                 parsed = json.loads(payload)
-                logging.debug(f"Parsed JSON: {parsed}")
+                logging.info(f"Parsed JSON: {parsed}")
             except Exception:
-                parsed = payload
-                logging.debug("Message is not valid JSON; delivering raw text.")
+                # Gmail push payloads are not JSON; they are base64-encoded Pub/Sub envelopes with attributes
+                parsed = {"raw": payload}
+                logging.info("Message is not JSON; passing raw text inside dict under 'raw'.")
             # Log attributes at debug level to keep visibility and satisfy linters
-            logging.debug(f"Attributes: {attributes}")
+            logging.info(f"Attributes: {attributes}")
             # Route to handler if provided
             if self._handler:
                 try:
@@ -117,7 +126,7 @@ class PubSubListener:
             try:
                 message.nack()
             except Exception:
-                logging.debug("Failed to NACK after exception; possibly already settled")
+                logging.info("Failed to NACK after exception; possibly already settled")
 
     def _is_transient_error(self, exc: Exception) -> bool:
         """Best-effort classification of transient errors suitable for retry via NACK."""
